@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "intercom-articles": {
+      "command": "node",
+      "args": [
+        "/ABSOLUTE/PATH/TO/intercom-articles-mcp/dist/index.js"
+      ],
+      "env": {
+        "INTERCOM_ACCESS_TOKEN": "your_intercom_access_token_here"
+      }
+    }
+  }
+}
