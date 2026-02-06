@@ -1,7 +1,7 @@
 {
   "name": "intercom-articles-mcp",
-  "version": "0.1.0",
-  "description": "A Model Context Protocol (MCP) server for reading Intercom Help Center articles",
+  "version": "0.2.0",
+  "description": "A Model Context Protocol (MCP) server for reading and writing Intercom Help Center articles",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

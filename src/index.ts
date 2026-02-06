@@ -34,19 +34,35 @@ const INTERCOM_API_BASE = 'https://api.intercom.io';
 /**
  * 呼叫 Intercom API
  */
-async function callIntercomAPI(endpoint: string): Promise<any> {
-  const response = await fetch(`${INTERCOM_API_BASE}${endpoint}`, {
+async function callIntercomAPI(
+  endpoint: string,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+  body?: any
+): Promise<any> {
+  const options: RequestInit = {
+    method,
     headers: {
       'Authorization': `Bearer ${INTERCOM_TOKEN}`,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       'Intercom-Version': '2.11'
     }
-  });
+  };
+
+  if (body && (method === 'POST' || method === 'PUT')) {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(`${INTERCOM_API_BASE}${endpoint}`, options);
 
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`Intercom API error: ${response.status} - ${error}`);
+  }
+
+  // Handle 204 No Content response
+  if (response.status === 204) {
+    return { success: true };
   }
 
   return response.json();
@@ -57,7 +73,7 @@ async function callIntercomAPI(endpoint: string): Promise<any> {
  */
 const server = new Server({
   name: 'intercom-articles-mcp',
-  version: '0.1.0'
+  version: '0.2.0'
 }, {
   capabilities: {
     tools: {}
@@ -101,6 +117,138 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               default: 10
             }
           }
+        }
+      },
+      {
+        name: 'create_article',
+        description: 'Create a new Intercom Help Center article. Supports multilingual content and draft/published states.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            title: {
+              type: 'string',
+              description: 'Article title (required)'
+            },
+            body: {
+              type: 'string',
+              description: 'Article content in HTML format (required)'
+            },
+            author_id: {
+              type: 'number',
+              description: 'Author ID - must be a valid Intercom team member ID (required)'
+            },
+            description: {
+              type: 'string',
+              description: 'Article description (optional)'
+            },
+            state: {
+              type: 'string',
+              enum: ['draft', 'published'],
+              description: 'Article state (optional, default: draft)'
+            },
+            parent_id: {
+              type: 'string',
+              description: 'Parent ID - collection or section ID (optional)'
+            },
+            parent_type: {
+              type: 'string',
+              enum: ['collection'],
+              description: 'Parent type (optional, default: collection)'
+            },
+            translated_content: {
+              type: 'object',
+              description: 'Multilingual content. Key is locale code (e.g., "zh-TW"), value is translation object',
+              additionalProperties: {
+                type: 'object',
+                properties: {
+                  title: {
+                    type: 'string',
+                    description: 'Translated title'
+                  },
+                  body: {
+                    type: 'string',
+                    description: 'Translated content in HTML'
+                  },
+                  description: {
+                    type: 'string',
+                    description: 'Translated description'
+                  },
+                  author_id: {
+                    type: 'number',
+                    description: 'Author ID for translation'
+                  },
+                  state: {
+                    type: 'string',
+                    enum: ['draft', 'published'],
+                    description: 'Translation state'
+                  }
+                },
+                required: ['title', 'body', 'author_id']
+              }
+            }
+          },
+          required: ['title', 'body', 'author_id']
+        }
+      },
+      {
+        name: 'update_article',
+        description: 'Update an existing Intercom Help Center article. Supports partial updates and multilingual content.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Article ID (required)'
+            },
+            title: {
+              type: 'string',
+              description: 'Updated article title (optional)'
+            },
+            body: {
+              type: 'string',
+              description: 'Updated article content in HTML format (optional)'
+            },
+            description: {
+              type: 'string',
+              description: 'Updated article description (optional)'
+            },
+            state: {
+              type: 'string',
+              enum: ['draft', 'published'],
+              description: 'Updated article state (optional)'
+            },
+            author_id: {
+              type: 'number',
+              description: 'Updated author ID (optional)'
+            },
+            translated_content: {
+              type: 'object',
+              description: 'Updated multilingual content. Only provided fields will be updated.',
+              additionalProperties: {
+                type: 'object',
+                properties: {
+                  title: {
+                    type: 'string',
+                    description: 'Updated translated title'
+                  },
+                  body: {
+                    type: 'string',
+                    description: 'Updated translated content in HTML'
+                  },
+                  description: {
+                    type: 'string',
+                    description: 'Updated translated description'
+                  },
+                  state: {
+                    type: 'string',
+                    enum: ['draft', 'published'],
+                    description: 'Updated translation state'
+                  }
+                }
+              }
+            }
+          },
+          required: ['id']
         }
       }
     ]
@@ -153,6 +301,102 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
+    if (name === 'create_article') {
+      const { title, body, author_id, description, state, parent_id, parent_type, translated_content } = args as {
+        title: string;
+        body: string;
+        author_id: number;
+        description?: string;
+        state?: 'draft' | 'published';
+        parent_id?: string;
+        parent_type?: 'collection';
+        translated_content?: {
+          [locale: string]: {
+            title: string;
+            body: string;
+            description?: string;
+            author_id: number;
+            state?: 'draft' | 'published';
+          }
+        }
+      };
+
+      // 驗證必填欄位
+      if (!title || !body || !author_id) {
+        throw new Error('title, body, and author_id are required fields');
+      }
+
+      // 建構 request payload
+      const payload: any = {
+        title,
+        body,
+        author_id
+      };
+
+      if (description) payload.description = description;
+      if (state) payload.state = state;
+      if (parent_id) payload.parent_id = parent_id;
+      if (parent_type) payload.parent_type = parent_type;
+      if (translated_content) payload.translated_content = translated_content;
+
+      const article = await callIntercomAPI('/articles', 'POST', payload);
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(article, null, 2)
+        }]
+      };
+    }
+
+    if (name === 'update_article') {
+      const { id, title, body, description, state, author_id, translated_content } = args as {
+        id: string;
+        title?: string;
+        body?: string;
+        description?: string;
+        state?: 'draft' | 'published';
+        author_id?: number;
+        translated_content?: {
+          [locale: string]: {
+            title?: string;
+            body?: string;
+            description?: string;
+            state?: 'draft' | 'published';
+          }
+        }
+      };
+
+      // 驗證必填欄位
+      if (!id) {
+        throw new Error('Article ID is required');
+      }
+
+      // 建構 update payload（只包含提供的欄位）
+      const payload: any = {};
+
+      if (title) payload.title = title;
+      if (body) payload.body = body;
+      if (description) payload.description = description;
+      if (state) payload.state = state;
+      if (author_id) payload.author_id = author_id;
+      if (translated_content) payload.translated_content = translated_content;
+
+      // 確保至少有一個欄位要更新
+      if (Object.keys(payload).length === 0) {
+        throw new Error('At least one field must be provided for update');
+      }
+
+      const article = await callIntercomAPI(`/articles/${id}`, 'PUT', payload);
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(article, null, 2)
+        }]
+      };
+    }
+
     throw new Error(`Unknown tool: ${name}`);
 
   } catch (error) {
@@ -182,9 +426,9 @@ async function main() {
   await server.connect(transport);
 
   // 使用 stderr 輸出（stdio 協定使用 stdout）
-  console.error('Intercom Articles MCP Server v0.1.0');
+  console.error('Intercom Articles MCP Server v0.2.0');
   console.error('Running on stdio transport');
-  console.error('Tools available: get_article, list_articles');
+  console.error('Tools available: get_article, list_articles, create_article, update_article');
 }
 
 // 啟動伺服器
