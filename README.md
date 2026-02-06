@@ -1,15 +1,17 @@
 # Intercom Articles MCP Server
 
-A Model Context Protocol (MCP) server for reading Intercom Help Center articles.
+A Model Context Protocol (MCP) server for reading and writing Intercom Help Center articles.
 
 ## Version
 
-**v0.1.0 MVP** - Read-only functionality
+**v0.2.0** - Full CRUD functionality with multilingual support
 
 ## Features
 
 - ✅ `get_article` - Get a single article by ID
 - ✅ `list_articles` - List articles with pagination
+- ✅ `create_article` - Create new articles with multilingual content
+- ✅ `update_article` - Update existing articles with partial updates
 
 ## Installation
 
@@ -35,7 +37,7 @@ npm run build
 
 1. Go to Intercom Settings → Developers → Developer Hub
 2. Create a new app or use existing one
-3. Get an Access Token with **Articles** read permissions
+3. Get an Access Token with **Articles** read and write permissions
 
 ### Configure Claude Desktop
 
@@ -76,7 +78,7 @@ Once configured, you can use these commands in Claude Desktop:
 
 ### List Articles
 ```
-請列出 Intercom 的文章
+List Intercom articles
 ```
 
 or
@@ -87,10 +89,18 @@ Show me the first 20 Intercom articles
 
 ### Get Article Details
 ```
-請顯示 Intercom 文章 123456 的內容
+Get Intercom article with ID 9876543
 ```
 
-(Replace `123456` with actual article ID)
+### Create Article
+```
+Create a new Intercom article titled "Getting Started Guide" with content "Welcome to our platform" by author ID 123456, save as draft
+```
+
+### Update Article
+```
+Update article 9876543 and change its state to published
+```
 
 ## Tools Reference
 
@@ -104,7 +114,7 @@ Get a single article by ID.
 **Example:**
 ```json
 {
-  "id": "123456"
+  "id": "9876543"
 }
 ```
 
@@ -121,6 +131,97 @@ List articles with pagination.
 {
   "page": 1,
   "per_page": 20
+}
+```
+
+### `create_article`
+
+Create a new article with multilingual support.
+
+**Parameters:**
+- `title` (string, required): Article title
+- `body` (string, required): Article content in HTML format
+- `author_id` (number, required): Author ID (must be a valid Intercom team member)
+- `description` (string, optional): Article description
+- `state` (string, optional): "draft" or "published" (default: "draft")
+- `parent_id` (string, optional): Collection or section ID
+- `parent_type` (string, optional): "collection" (default)
+- `translated_content` (object, optional): Multilingual content
+
+**Example (Simple):**
+```json
+{
+  "title": "Getting Started Guide",
+  "body": "<p>Welcome to our platform</p>",
+  "author_id": 123456,
+  "state": "draft"
+}
+```
+
+**Example (Multilingual):**
+```json
+{
+  "title": "Getting Started Guide",
+  "body": "<p>Welcome to our platform</p>",
+  "author_id": 123456,
+  "state": "published",
+  "translated_content": {
+    "zh-TW": {
+      "title": "入門指南",
+      "body": "<p>歡迎使用我們的平台</p>",
+      "author_id": 123456,
+      "state": "published"
+    },
+    "ja": {
+      "title": "スタートガイド",
+      "body": "<p>プラットフォームへようこそ</p>",
+      "author_id": 123456,
+      "state": "published"
+    }
+  }
+}
+```
+
+### `update_article`
+
+Update an existing article. Only provided fields will be updated.
+
+**Parameters:**
+- `id` (string, required): Article ID
+- `title` (string, optional): Updated title
+- `body` (string, optional): Updated content
+- `description` (string, optional): Updated description
+- `state` (string, optional): "draft" or "published"
+- `author_id` (number, optional): Updated author ID
+- `translated_content` (object, optional): Updated translations
+
+**Example (Change state):**
+```json
+{
+  "id": "9876543",
+  "state": "published"
+}
+```
+
+**Example (Update content):**
+```json
+{
+  "id": "9876543",
+  "title": "Updated Title",
+  "body": "<p>Updated content</p>"
+}
+```
+
+**Example (Add translation):**
+```json
+{
+  "id": "9876543",
+  "translated_content": {
+    "zh-TW": {
+      "title": "更新的標題",
+      "body": "<p>更新的內容</p>"
+    }
+  }
 }
 ```
 
@@ -173,13 +274,15 @@ intercom-articles-mcp/
 
 ## Roadmap
 
-Future versions (v0.2+) may include:
+Future versions may include:
 
-- Create Article
-- Update Article
-- Delete Article
-- Better error handling
-- Modular file structure
+- ✅ Create Article (v0.2.0)
+- ✅ Update Article (v0.2.0)
+- ✅ Multilingual support (v0.2.0)
+- 🔜 Delete Article
+- 🔜 Search Articles
+- 🔜 Better error handling
+- 🔜 Modular file structure
 
 ## Resources
 
