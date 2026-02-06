@@ -15,7 +15,7 @@ A Model Context Protocol (MCP) server for reading Intercom Help Center articles.
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/YOUR_USERNAME/intercom-articles-mcp.git
+git clone https://github.com/kaosensei/intercom-articles-mcp.git
 cd intercom-articles-mcp
 ```
 
