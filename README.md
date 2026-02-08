@@ -4,14 +4,21 @@ A Model Context Protocol (MCP) server for reading and writing Intercom Help Cent
 
 ## Version
 
-**v0.2.0** - Full CRUD functionality with multilingual support
+**v0.4.0** - Full CRUD for Articles and Collections with multilingual support
 
 ## Features
 
+### Articles
 - ✅ `get_article` - Get a single article by ID
 - ✅ `list_articles` - List articles with pagination
 - ✅ `create_article` - Create new articles with multilingual content
 - ✅ `update_article` - Update existing articles with partial updates
+
+### Collections
+- ✅ `list_collections` - List all Help Center collections
+- ✅ `get_collection` - Get a single collection by ID
+- ✅ `update_collection` - Update collection info and translations
+- ✅ `delete_collection` - Delete a collection (permanent)
 
 ## Installation
 
@@ -39,9 +46,28 @@ npm run build
 2. Create a new app or use existing one
 3. Get an Access Token with **Articles** read and write permissions
 
-### Configure Claude Desktop
+### Configure with Claude Code (Recommended)
 
-Edit your Claude Desktop config file:
+If you're using Claude Code CLI, you can easily add the MCP server:
+
+```bash
+claude mcp add --transport stdio intercom-articles \
+  --env INTERCOM_ACCESS_TOKEN=<your_token> \
+  -- node /ABSOLUTE/PATH/TO/intercom-articles-mcp/dist/index.js
+```
+
+Replace:
+- `<your_token>` with your Intercom Access Token
+- `/ABSOLUTE/PATH/TO/` with your actual project path
+
+To verify it's configured:
+```bash
+claude mcp list
+```
+
+### Configure Claude Desktop Manually
+
+Alternatively, edit your Claude Desktop config file:
 
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
@@ -100,6 +126,56 @@ Create a new Intercom article titled "Getting Started Guide" with content "Welco
 ### Update Article
 ```
 Update article 9876543 and change its state to published
+```
+
+### List Collections
+```
+List all Intercom Help Center collections
+```
+
+### Get Collection
+```
+Get collection with ID 14608214
+```
+
+### Update Collection
+```
+Update collection 14608214 and add Japanese translation
+```
+
+### Delete Collection
+```
+Delete collection 16036040
+```
+
+## Use Case: Translation Management
+
+One of the key features of v0.4.0 is the ability to manage multilingual collections efficiently.
+
+### Add Missing Translations
+
+You can easily add translations to collections that are missing certain languages:
+
+```
+Update collection 14608214 and add the missing Japanese translation: name "アカウント管理", description "アカウント設定を管理する"
+```
+
+### Bulk Translation Updates
+
+Check which collections are missing translations:
+
+```
+List all collections and show me which ones are missing Japanese translations
+```
+
+Then update them one by one or create a plan to update multiple collections.
+
+### Verify Translations
+
+After updating, verify the changes:
+
+```
+Get collection 14608214 and show me all available translations
 ```
 
 ## Tools Reference
@@ -225,6 +301,105 @@ Update an existing article. Only provided fields will be updated.
 }
 ```
 
+### `list_collections`
+
+List all Help Center collections (top-level categories).
+
+**Parameters:**
+- `page` (number, optional): Page number (default: 1)
+- `per_page` (number, optional): Collections per page (default: 50, max: 150)
+
+**Example:**
+```json
+{
+  "page": 1,
+  "per_page": 50
+}
+```
+
+### `get_collection`
+
+Get a single collection by ID.
+
+**Parameters:**
+- `id` (string, required): Collection ID
+
+**Example:**
+```json
+{
+  "id": "14608214"
+}
+```
+
+### `update_collection`
+
+Update an existing collection. Only provided fields will be updated. Perfect for adding missing translations!
+
+**Parameters:**
+- `id` (string, required): Collection ID
+- `name` (string, optional): Updated collection name (updates default language)
+- `description` (string, optional): Updated description (updates default language)
+- `parent_id` (string, optional): Parent collection ID (null for top-level)
+- `translated_content` (object, optional): Updated translations
+
+**Example (Update name and description):**
+```json
+{
+  "id": "14608214",
+  "name": "Account Management",
+  "description": "Manage your account settings"
+}
+```
+
+**Example (Add missing Japanese translation):**
+```json
+{
+  "id": "14608214",
+  "translated_content": {
+    "ja": {
+      "name": "アカウント管理",
+      "description": "アカウント設定を管理"
+    }
+  }
+}
+```
+
+**Example (Update multiple language translations):**
+```json
+{
+  "id": "14608214",
+  "translated_content": {
+    "ja": {
+      "name": "アカウント管理",
+      "description": "アカウント設定を管理する"
+    },
+    "id": {
+      "name": "Manajemen Akun",
+      "description": "Kelola pengaturan akun Anda"
+    }
+  }
+}
+```
+
+### `delete_collection`
+
+Delete a collection permanently. **WARNING: This action cannot be undone!**
+
+**Parameters:**
+- `id` (string, required): Collection ID to delete
+
+**Example:**
+```json
+{
+  "id": "16036040"
+}
+```
+
+**⚠️ Important Notes:**
+- Deleted collections cannot be restored
+- All content within the collection may be affected
+- Always backup important data before deletion
+
 ## Development
 
 ### Build
@@ -274,13 +449,22 @@ intercom-articles-mcp/
 
 ## Roadmap
 
-Future versions may include:
-
+### Completed
+- ✅ Get Article (v0.1.0)
+- ✅ List Articles (v0.1.0)
 - ✅ Create Article (v0.2.0)
 - ✅ Update Article (v0.2.0)
-- ✅ Multilingual support (v0.2.0)
-- 🔜 Delete Article
-- 🔜 Search Articles
+- ✅ Multilingual support for Articles (v0.2.0)
+- ✅ List Collections (v0.3.1)
+- ✅ Get Collection (v0.3.1)
+- ✅ Update Collection (v0.4.0)
+- ✅ Delete Collection (v0.4.0)
+- ✅ Multilingual support for Collections (v0.4.0)
+
+### Planned
+- 🔜 Delete Article (v0.5.0)
+- 🔜 Search Articles (v0.5.0)
+- 🔜 Batch operations (v0.5.0)
 - 🔜 Better error handling
 - 🔜 Modular file structure
 

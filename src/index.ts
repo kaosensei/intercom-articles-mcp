@@ -16,6 +16,22 @@ interface IntercomArticle {
   updated_at: number;
 }
 
+// Intercom Collection 型別
+interface IntercomCollection {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description?: string;
+  created_at: number;
+  updated_at: number;
+  url?: string;
+  icon?: string;
+  order?: number;
+  default_locale?: string;
+  translated_content?: any;
+}
+
+
 // List 回應型別
 interface ListArticlesResponse {
   type: 'list';
@@ -26,6 +42,17 @@ interface ListArticlesResponse {
     total_pages: number;
   };
 }
+
+interface ListCollectionsResponse {
+  type: 'list';
+  data: IntercomCollection[];
+  pages?: {
+    page: number;
+    per_page: number;
+    total_pages: number;
+  };
+}
+
 
 // 從環境變數取得 token
 const INTERCOM_TOKEN = process.env.INTERCOM_ACCESS_TOKEN;
@@ -45,7 +72,7 @@ async function callIntercomAPI(
       'Authorization': `Bearer ${INTERCOM_TOKEN}`,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'Intercom-Version': '2.11'
+      'Intercom-Version': '2.14'
     }
   };
 
@@ -73,7 +100,7 @@ async function callIntercomAPI(
  */
 const server = new Server({
   name: 'intercom-articles-mcp',
-  version: '0.2.0'
+  version: '0.4.0'
 }, {
   capabilities: {
     tools: {}
@@ -250,6 +277,96 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ['id']
         }
+      },
+      {
+        name: 'list_collections',
+        description: 'List all Intercom Help Center collections. Collections are top-level categories that contain sections and articles.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            page: {
+              type: 'number',
+              description: 'Page number (default: 1)',
+              default: 1
+            },
+            per_page: {
+              type: 'number',
+              description: 'Number of collections per page (default: 50, max: 150)',
+              default: 50
+            }
+          }
+        }
+      },
+      {
+        name: 'get_collection',
+        description: 'Get a single Intercom Help Center collection by ID. Returns full collection details including name, description, and metadata.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'The collection ID (e.g., "123456")'
+            }
+          },
+          required: ['id']
+        }
+      },
+      {
+        name: 'update_collection',
+        description: 'Update an existing Intercom Help Center collection. Supports updating name, description, and multilingual translations.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Collection ID (required)'
+            },
+            name: {
+              type: 'string',
+              description: 'Updated collection name (optional, updates default language)'
+            },
+            description: {
+              type: 'string',
+              description: 'Updated collection description (optional, updates default language)'
+            },
+            parent_id: {
+              type: 'string',
+              description: 'Updated parent collection ID (optional, null for top-level)'
+            },
+            translated_content: {
+              type: 'object',
+              description: 'Updated multilingual content. Key is locale code (e.g., "zh-TW"), value is translation object',
+              additionalProperties: {
+                type: 'object',
+                properties: {
+                  name: {
+                    type: 'string',
+                    description: 'Translated collection name'
+                  },
+                  description: {
+                    type: 'string',
+                    description: 'Translated collection description'
+                  }
+                }
+              }
+            }
+          },
+          required: ['id']
+        }
+      },
+      {
+        name: 'delete_collection',
+        description: 'Delete an Intercom Help Center collection. WARNING: This action cannot be undone. The collection and all its contents will be permanently removed.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Collection ID to delete (required)'
+            }
+          },
+          required: ['id']
+        }
       }
     ]
   };
@@ -397,6 +514,109 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
+    if (name === 'list_collections') {
+      const { page = 1, per_page = 50 } = args as {
+        page?: number;
+        per_page?: number;
+      };
+
+      // 確保參數在合理範圍內
+      const validPage = Math.max(1, Math.floor(page));
+      const validPerPage = Math.min(150, Math.max(1, Math.floor(per_page)));
+
+      const data: ListCollectionsResponse = await callIntercomAPI(
+        `/help_center/collections?page=${validPage}&per_page=${validPerPage}`
+      );
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(data, null, 2)
+        }]
+      };
+    }
+
+    if (name === 'get_collection') {
+      const { id } = args as { id: string };
+
+      if (!id) {
+        throw new Error('Collection ID is required');
+      }
+
+      const collection = await callIntercomAPI(`/help_center/collections/${id}`);
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(collection, null, 2)
+        }]
+      };
+    }
+
+    if (name === 'update_collection') {
+      const { id, name: collectionName, description, parent_id, translated_content } = args as {
+        id: string;
+        name?: string;
+        description?: string;
+        parent_id?: string;
+        translated_content?: {
+          [locale: string]: {
+            name?: string;
+            description?: string;
+          }
+        }
+      };
+
+      // 驗證必填欄位
+      if (!id) {
+        throw new Error('Collection ID is required');
+      }
+
+      // 建構 update payload（只包含提供的欄位）
+      const payload: any = {};
+
+      if (collectionName !== undefined) payload.name = collectionName;
+      if (description !== undefined) payload.description = description;
+      if (parent_id !== undefined) payload.parent_id = parent_id;
+      if (translated_content) payload.translated_content = translated_content;
+
+      // 確保至少有一個欄位要更新
+      if (Object.keys(payload).length === 0) {
+        throw new Error('At least one field must be provided for update');
+      }
+
+      const collection = await callIntercomAPI(`/help_center/collections/${id}`, 'PUT', payload);
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(collection, null, 2)
+        }]
+      };
+    }
+
+    if (name === 'delete_collection') {
+      const { id } = args as { id: string };
+
+      // 驗證必填欄位
+      if (!id) {
+        throw new Error('Collection ID is required');
+      }
+
+      const result = await callIntercomAPI(`/help_center/collections/${id}`, 'DELETE');
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            message: `Collection ${id} has been deleted successfully`,
+            ...result
+          }, null, 2)
+        }]
+      };
+    }
+
     throw new Error(`Unknown tool: ${name}`);
 
   } catch (error) {
@@ -426,9 +646,11 @@ async function main() {
   await server.connect(transport);
 
   // 使用 stderr 輸出（stdio 協定使用 stdout）
-  console.error('Intercom Articles MCP Server v0.2.0');
+  console.error('Intercom Articles MCP Server v0.4.0');
   console.error('Running on stdio transport');
-  console.error('Tools available: get_article, list_articles, create_article, update_article');
+  console.error('Tools available:');
+  console.error('  Articles: get_article, list_articles, create_article, update_article');
+  console.error('  Collections: list_collections, get_collection, update_collection, delete_collection');
 }
 
 // 啟動伺服器
