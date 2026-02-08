@@ -43,6 +43,43 @@ interface ListArticlesResponse {
   };
 }
 
+// Search Articles 回應型別
+interface SearchArticlesResponse {
+  type: 'list';
+  total_count: number;
+  data: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    body?: string;
+    author_id: number;
+    state: 'draft' | 'published';
+    created_at: number;
+    updated_at: number;
+    url?: string;
+    parent_id?: string;
+    parent_type?: string;
+    default_locale?: string;
+    translated_content?: any;
+    statistics?: any;
+    highlights?: {
+      title?: string[];
+      body?: string[];
+      description?: string[];
+    };
+  }>;
+  pages?: {
+    type: string;
+    page?: number;
+    per_page?: number;
+    total_pages?: number;
+    next?: {
+      page: number;
+      starting_after: string;
+    };
+  };
+}
+
 interface ListCollectionsResponse {
   type: 'list';
   data: IntercomCollection[];
@@ -100,7 +137,7 @@ async function callIntercomAPI(
  */
 const server = new Server({
   name: 'intercom-articles-mcp',
-  version: '0.4.0'
+  version: '0.5.0'
 }, {
   capabilities: {
     tools: {}
@@ -367,6 +404,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ['id']
         }
+      },
+      {
+        name: 'search_articles',
+        description: 'Search for Intercom Help Center articles using keywords. Returns matching articles with optional highlighted content showing where matches were found.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            phrase: {
+              type: 'string',
+              description: 'Search phrase/keywords to find in articles (required)'
+            },
+            state: {
+              type: 'string',
+              enum: ['published', 'draft', 'all'],
+              description: 'Filter by article state (optional, default: all)'
+            },
+            help_center_id: {
+              type: 'string',
+              description: 'Filter by specific Help Center ID (optional)'
+            },
+            highlight: {
+              type: 'boolean',
+              description: 'Return highlighted matching content snippets (optional, default: false)'
+            }
+          },
+          required: ['phrase']
+        }
       }
     ]
   };
@@ -617,6 +681,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
+    if (name === 'search_articles') {
+      const { phrase, state, help_center_id, highlight } = args as {
+        phrase: string;
+        state?: 'published' | 'draft' | 'all';
+        help_center_id?: string;
+        highlight?: boolean;
+      };
+
+      // 驗證必填欄位
+      if (!phrase) {
+        throw new Error('Search phrase is required');
+      }
+
+      // 建構查詢參數
+      const queryParams = new URLSearchParams();
+      queryParams.append('phrase', phrase);
+
+      if (state) {
+        queryParams.append('state', state);
+      }
+
+      if (help_center_id) {
+        queryParams.append('help_center_id', help_center_id);
+      }
+
+      if (highlight !== undefined) {
+        queryParams.append('highlight', String(highlight));
+      }
+
+      const data: SearchArticlesResponse = await callIntercomAPI(
+        `/articles/search?${queryParams.toString()}`
+      );
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(data, null, 2)
+        }]
+      };
+    }
+
     throw new Error(`Unknown tool: ${name}`);
 
   } catch (error) {
@@ -646,10 +751,10 @@ async function main() {
   await server.connect(transport);
 
   // 使用 stderr 輸出（stdio 協定使用 stdout）
-  console.error('Intercom Articles MCP Server v0.4.0');
+  console.error('Intercom Articles MCP Server v0.5.0');
   console.error('Running on stdio transport');
   console.error('Tools available:');
-  console.error('  Articles: get_article, list_articles, create_article, update_article');
+  console.error('  Articles: get_article, list_articles, create_article, update_article, search_articles');
   console.error('  Collections: list_collections, get_collection, update_collection, delete_collection');
 }
 
