@@ -4,13 +4,14 @@ A Model Context Protocol (MCP) server for reading and writing Intercom Help Cent
 
 ## Version
 
-**v0.4.0** - Full CRUD for Articles and Collections with multilingual support
+**v0.5.0** - Added article search functionality with keyword matching and highlighting
 
 ## Features
 
 ### Articles
 - ✅ `get_article` - Get a single article by ID
 - ✅ `list_articles` - List articles with pagination
+- ✅ `search_articles` - Search articles by keywords with highlighting support
 - ✅ `create_article` - Create new articles with multilingual content
 - ✅ `update_article` - Update existing articles with partial updates
 
@@ -118,6 +119,23 @@ Show me the first 20 Intercom articles
 Get Intercom article with ID 9876543
 ```
 
+### Search Articles
+```
+Search for Intercom articles about "subscription"
+```
+
+or
+
+```
+Search published articles containing "播客" with highlighted matches
+```
+
+or
+
+```
+Find articles with keyword "訂閱" in Chinese
+```
+
 ### Create Article
 ```
 Create a new Intercom article titled "Getting Started Guide" with content "Welcome to our platform" by author ID 123456, save as draft
@@ -209,6 +227,53 @@ List articles with pagination.
   "per_page": 20
 }
 ```
+
+### `search_articles`
+
+Search for articles using keywords. Supports full-text search across article content with multilingual support (English, Chinese, Japanese, etc.).
+
+**Parameters:**
+- `phrase` (string, required): Search keywords/phrase to find in articles
+- `state` (string, optional): Filter by article state - "published", "draft", or "all" (default: "all")
+- `help_center_id` (string, optional): Filter by specific Help Center ID
+- `highlight` (boolean, optional): Return highlighted matching content snippets (default: false)
+
+**Example (Simple search):**
+```json
+{
+  "phrase": "subscription"
+}
+```
+
+**Example (Search with filters):**
+```json
+{
+  "phrase": "播客",
+  "state": "published",
+  "highlight": true
+}
+```
+
+**Example (Chinese keyword search):**
+```json
+{
+  "phrase": "訂閱制",
+  "state": "all",
+  "highlight": true
+}
+```
+
+**Response includes:**
+- `total_count`: Total number of matching articles
+- `data.articles`: Array of matching articles with full content
+- `pages`: Pagination information with next page URL
+- Highlighted content snippets (when `highlight: true`)
+
+**Use Cases:**
+- Find all articles about a specific topic
+- Search for Chinese/Japanese content in multilingual help centers
+- Locate articles that need updating
+- Discover related content for cross-linking
 
 ### `create_article`
 
@@ -460,11 +525,11 @@ intercom-articles-mcp/
 - ✅ Update Collection (v0.4.0)
 - ✅ Delete Collection (v0.4.0)
 - ✅ Multilingual support for Collections (v0.4.0)
+- ✅ Search Articles with keyword matching and highlighting (v0.5.0)
 
 ### Planned
-- 🔜 Delete Article (v0.5.0)
-- 🔜 Search Articles (v0.5.0)
-- 🔜 Batch operations (v0.5.0)
+- 🔜 Delete Article
+- 🔜 Batch operations
 - 🔜 Better error handling
 - 🔜 Modular file structure
 
