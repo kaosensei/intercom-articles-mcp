@@ -4,7 +4,7 @@ Intercom MCP server for Help Center content management and CS workflow automatio
 
 ## Version
 
-**v0.6.0** - Added CS workflow tools (reply conversation, add note, close conversation, update ticket)
+**v0.6.0** - Added CS workflow tools (reply conversation, add note, close conversation, update ticket state)
 
 ## Features
 
@@ -25,7 +25,7 @@ Intercom MCP server for Help Center content management and CS workflow automatio
 - ✅ `reply_conversation` - Reply to a conversation as an admin
 - ✅ `add_conversation_note` - Add an internal note to a conversation
 - ✅ `close_conversation` - Close a conversation
-- ✅ `update_ticket` - Update a ticket's state or attributes
+- ✅ `update_ticket_state` - Update a ticket's state
 
 ## Installation
 
@@ -481,6 +481,70 @@ Delete a collection permanently. **WARNING: This action cannot be undone!**
 - All content within the collection may be affected
 - Always backup important data before deletion
 
+### `reply_conversation`
+
+Reply to a conversation as an admin. The reply is visible to the customer.
+
+**Parameters:**
+- `conversation_id` (string, required): The conversation ID to reply to
+- `body` (string, required): The reply message body (supports HTML)
+- `admin_id` (string, optional): Admin ID to reply as (defaults to `INTERCOM_ADMIN_ID` env var)
+
+**Example:**
+```json
+{
+  "conversation_id": "12345678",
+  "body": "<p>Thank you for reaching out. We'll look into this right away.</p>"
+}
+```
+
+### `add_conversation_note`
+
+Add an internal note to a conversation. Notes are only visible to team members, not customers.
+
+**Parameters:**
+- `conversation_id` (string, required): The conversation ID to add a note to
+- `body` (string, required): The note content (supports HTML)
+- `admin_id` (string, optional): Admin ID adding the note (defaults to `INTERCOM_ADMIN_ID` env var)
+
+**Example:**
+```json
+{
+  "conversation_id": "12345678",
+  "body": "<p>Customer has been refunded. Follow up in 3 days.</p>"
+}
+```
+
+### `close_conversation`
+
+Close a conversation.
+
+**Parameters:**
+- `conversation_id` (string, required): The conversation ID to close
+
+**Example:**
+```json
+{
+  "conversation_id": "12345678"
+}
+```
+
+### `update_ticket_state`
+
+Update the state of a ticket.
+
+**Parameters:**
+- `ticket_id` (string, required): The ticket ID to update
+- `state` (string, required): The new ticket state — one of `in_progress`, `waiting_on_customer`, `resolved`
+
+**Example:**
+```json
+{
+  "ticket_id": "87654321",
+  "state": "resolved"
+}
+```
+
 ## Development
 
 ### Build
@@ -545,7 +609,7 @@ intercom-mcp/
 - ✅ Reply to conversations (v0.6.0)
 - ✅ Add internal notes to conversations (v0.6.0)
 - ✅ Close conversations (v0.6.0)
-- ✅ Update ticket state and attributes (v0.6.0)
+- ✅ Update ticket state (v0.6.0)
 
 ### Planned
 - 🔜 Delete Article
