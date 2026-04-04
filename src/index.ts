@@ -47,27 +47,29 @@ interface ListArticlesResponse {
 interface SearchArticlesResponse {
   type: 'list';
   total_count: number;
-  data: Array<{
-    id: string;
-    title: string;
-    description?: string;
-    body?: string;
-    author_id: number;
-    state: 'draft' | 'published';
-    created_at: number;
-    updated_at: number;
-    url?: string;
-    parent_id?: string;
-    parent_type?: string;
-    default_locale?: string;
-    translated_content?: any;
-    statistics?: any;
-    highlights?: {
+  data: {
+    articles: Array<{
+      id: string;
+      title: string;
+      description?: string;
+      body?: string;
+      author_id: number;
+      state: 'draft' | 'published';
+      created_at: number;
+      updated_at: number;
+      url?: string;
+      parent_id?: string;
+      parent_type?: string;
+      default_locale?: string;
+      translated_content?: any;
+      statistics?: any;
+    }>;
+    highlights?: Array<{
       title?: string[];
       body?: string[];
       description?: string[];
-    };
-  }>;
+    }>;
+  };
   pages?: {
     type: string;
     page?: number;
@@ -408,7 +410,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'search_articles',
-        description: 'Search for Intercom Help Center articles using keywords. Returns matching articles with optional highlighted content showing where matches were found.',
+        description: 'Search for Intercom Help Center articles using keywords. Returns summary fields (id, title, description, state, url) for each match. Use get_article to fetch the full content of a specific article.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -792,10 +794,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         `/articles/search?${queryParams.toString()}`
       );
 
+      const summary = {
+        total_count: data.total_count,
+        articles: (data.data.articles ?? []).map(article => ({
+          id: article.id,
+          title: article.title,
+          description: article.description,
+          state: article.state,
+          url: article.url,
+          author_id: article.author_id,
+          created_at: article.created_at,
+          updated_at: article.updated_at,
+          parent_id: article.parent_id,
+          parent_type: article.parent_type,
+        })),
+      };
+
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(data, null, 2)
+          text: JSON.stringify(summary, null, 2)
         }]
       };
     }
