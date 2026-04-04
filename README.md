@@ -4,7 +4,7 @@ Intercom MCP server for Help Center content management and CS workflow automatio
 
 ## Version
 
-**v0.6.0** - Added CS workflow tools (reply conversation, add note, close conversation, update ticket state)
+**v0.7.0** - Added delete_article, create_collection, list_admins; optimized search_articles response
 
 ## Features
 
@@ -14,12 +14,17 @@ Intercom MCP server for Help Center content management and CS workflow automatio
 - ✅ `search_articles` - Search articles by keywords with highlighting support
 - ✅ `create_article` - Create new articles with multilingual content
 - ✅ `update_article` - Update existing articles with partial updates
+- ✅ `delete_article` - Delete an article permanently
 
 ### Collections
 - ✅ `list_collections` - List all Help Center collections
 - ✅ `get_collection` - Get a single collection by ID
 - ✅ `update_collection` - Update collection info and translations
 - ✅ `delete_collection` - Delete a collection (permanent)
+- ✅ `create_collection` - Create new Help Center collections
+
+### Admin
+- ✅ `list_admins` - List workspace admins (useful for finding valid author_id)
 
 ### CS Workflow
 - ✅ `reply_conversation` - Reply to a conversation as an admin
@@ -249,24 +254,21 @@ List articles with pagination.
 Search for articles using keywords. Supports full-text search across article content with multilingual support (English, Chinese, Japanese, etc.).
 
 **Parameters:**
-- `phrase` (string, required): Search keywords/phrase to find in articles
+- `phrase` (string, optional): Search keywords/phrase to find in articles
 - `state` (string, optional): Filter by article state - "published", "draft", or "all" (default: "all")
 - `help_center_id` (string, optional): Filter by specific Help Center ID
-- `highlight` (boolean, optional): Return highlighted matching content snippets (default: false)
 
-**Example (Simple search):**
+**Example (Search by keyword):**
 ```json
 {
   "phrase": "subscription"
 }
 ```
 
-**Example (Search with filters):**
+**Example (List all drafts, no keyword needed):**
 ```json
 {
-  "phrase": "播客",
-  "state": "published",
-  "highlight": true
+  "state": "draft"
 }
 ```
 
@@ -274,16 +276,15 @@ Search for articles using keywords. Supports full-text search across article con
 ```json
 {
   "phrase": "訂閱制",
-  "state": "all",
-  "highlight": true
+  "state": "all"
 }
 ```
 
 **Response includes:**
 - `total_count`: Total number of matching articles
-- `data.articles`: Array of matching articles with full content
-- `pages`: Pagination information with next page URL
-- Highlighted content snippets (when `highlight: true`)
+- `articles`: Array of summary fields per article (id, title, description, state, url, author_id, created_at, updated_at, parent_id, parent_type)
+
+Use `get_article` to fetch the full content of a specific article.
 
 **Use Cases:**
 - Find all articles about a specific topic
@@ -481,6 +482,62 @@ Delete a collection permanently. **WARNING: This action cannot be undone!**
 - All content within the collection may be affected
 - Always backup important data before deletion
 
+### `delete_article`
+
+Delete an article permanently. **WARNING: This action cannot be undone!**
+
+**Parameters:**
+- `id` (string, required): Article ID to delete
+
+**Example:**
+```json
+{
+  "id": "9876543"
+}
+```
+
+### `create_collection`
+
+Create a new Help Center collection.
+
+**Parameters:**
+- `name` (string, required): Collection name
+- `description` (string, optional): Collection description
+- `parent_id` (string, optional): Parent collection ID for nesting (omit for top-level)
+- `translated_content` (object, optional): Multilingual content by locale code
+
+**Example (Simple):**
+```json
+{
+  "name": "Getting Started"
+}
+```
+
+**Example (With translation):**
+```json
+{
+  "name": "Getting Started",
+  "translated_content": {
+    "zh-TW": {
+      "name": "入門指南",
+      "description": "開始使用我們的平台"
+    }
+  }
+}
+```
+
+### `list_admins`
+
+List all workspace admins. Useful for finding valid `author_id` values when creating or updating articles.
+
+**Parameters:** None
+
+**Response includes:**
+- `id`: Admin ID (use this as `author_id`)
+- `name`: Display name
+- `email`: Email address
+- `has_inbox_seat`: Whether the admin has an inbox seat
+
 ### `reply_conversation`
 
 Reply to a conversation as an admin. The reply is visible to the customer.
@@ -610,9 +667,12 @@ intercom-mcp/
 - ✅ Add internal notes to conversations (v0.6.0)
 - ✅ Close conversations (v0.6.0)
 - ✅ Update ticket state (v0.6.0)
+- ✅ Delete Article (v0.7.0)
+- ✅ Create Collection (v0.7.0)
+- ✅ List Admins (v0.7.0)
+- ✅ Optimized search_articles response (v0.7.0)
 
 ### Planned
-- 🔜 Delete Article
 - 🔜 Batch operations
 - 🔜 Better error handling
 - 🔜 Modular file structure
